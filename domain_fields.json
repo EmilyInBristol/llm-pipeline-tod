@@ -1,0 +1,57 @@
+{
+  "restaurant": {
+    "fields": [
+      {"name": "pricerange", "desc": "price range of the restaurant (cheap/moderate/expensive)"},
+      {"name": "area", "desc": "area where the restaurant is located (north/east/west/south/centre)"},
+      {"name": "food", "desc": "type of food the restaurant serves"},
+      {"name": "name", "desc": "name of the restaurant"},
+      {"name": "bookday", "desc": "day of the booking"},
+      {"name": "booktime", "desc": "time of the booking"},
+      {"name": "bookpeople", "desc": "how many people the booking is for"}
+    ]
+  },
+  "hotel": {
+    "fields": [
+      {"name": "pricerange", "desc": "price range of the hotel (cheap/moderate/expensive)"},
+      {"name": "area", "desc": "area where the hotel is located (north/east/west/south/centre)"},
+      {"name": "name", "desc": "name of the hotel"},
+      {"name": "stars", "desc": "star rating of the hotel"},
+      {"name": "parking", "desc": "whether parking is available"},
+      {"name": "internet", "desc": "whether internet is available"},
+      {"name": "type", "desc": "type of the hotel (hotel/guesthouse)"},
+      {"name": "bookday", "desc": "day of the booking"},
+      {"name": "booktime", "desc": "time of the booking"},
+      {"name": "bookpeople", "desc": "how many people the booking is for"}
+    ]
+  },
+  "attraction": {
+    "fields": [
+      {"name": "type", "desc": "type of the attraction (museum, park, etc.)"},
+      {"name": "area", "desc": "area where the attraction is located (north/east/west/south/centre)"},
+      {"name": "name", "desc": "name of the attraction"}
+    ]
+  },
+  "train": {
+    "fields": [
+      {"name": "departure", "desc": "departure location"},
+      {"name": "destination", "desc": "destination location"},
+      {"name": "day", "desc": "day of the train"},
+      {"name": "leaveat", "desc": "departure time"},
+      {"name": "arriveby", "desc": "arrival time"},
+      {"name": "people", "desc": "how many people the booking is for"}
+    ]
+  },
+  "taxi": {
+    "fields": [
+      {"name": "departure", "desc": "departure location"},
+      {"name": "destination", "desc": "destination location"},
+      {"name": "arriveby", "desc": "arrival time"},
+      {"name": "leaveat", "desc": "departure time"}
+    ]
+  },
+  "hospital": {
+    "fields": [
+      {"name": "department", "desc": "department of the hospital"}
+    ]
+  }
+} 
