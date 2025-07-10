@@ -5,6 +5,7 @@ from tqdm import tqdm
 from transformers import AutoTokenizer, AutoModelForCausalLM
 from peft import PeftModel
 import random
+import evaluate  # 新增
 
 def load_model(base_model_path, lora_model_path, use_lora=False, load_in_8bit=False, load_in_4bit=False):
     """加载Tokenizer和LoRA模型"""
@@ -65,7 +66,7 @@ def infer_domains(tokenizer, model, prompts, max_new_tokens=128, num_samples=Non
         })
     return results
 
-def evaluate(results, gold_domains, error_log_file="error_log.txt"):
+def evaluate_domains(results, gold_domains, error_log_file="error_log.txt"):
     """评估准确率，输出错误日志"""
     correct = 0
     empty_gold_count = 0
@@ -86,7 +87,7 @@ def evaluate(results, gold_domains, error_log_file="error_log.txt"):
                 + "-" * 50 + "\n"
             )
     if error_log:
-        with open(error_log_file, "w", encoding="utf-8") as f:
+        with open(error_log_file, "w", encoding='utf-8') as f:
             f.writelines(error_log)
     accuracy = correct / len(results) if results else 0
     print(f"\n推理完成！准确率: {accuracy:.2%} ({correct}/{len(results)})")
@@ -277,29 +278,30 @@ def infer_responses(tokenizer, model, prompts, max_new_tokens=128, num_samples=N
 
 # 新增：response评估
 def evaluate_responses(results, gold_responses, error_log_file="error_log.txt"):
-    """简单评估response生成，完全一致算正确。"""
-    correct = 0
-    error_log = []
+    """使用BLEU分数评估response生成，并记录所有gold和pred对比日志。"""
+    predictions = []
+    references = []
+    log_lines = []
     for i, r in enumerate(results):
         gold = gold_responses[i].strip() if i < len(gold_responses) else ""
         pred = r.get("pred_response", "").strip()
-        if gold and pred and pred == gold:
-            correct += 1
-        else:
-            error_log.append(
-                "Prompt:\n" + r.get("prompt", "") + "\n"
-                "Gold Response: " + str(gold) + "\n"
-                "Predicted Response: " + str(pred) + "\n"
-                "Raw Output:\n" + r.get("raw_output", "") + "\n"
-                + "-" * 50 + "\n"
-            )
-    if error_log:
-        with open(error_log_file, "w", encoding="utf-8") as f:
-            f.writelines(error_log)
-    accuracy = correct / len(results) if results else 0
-    print(f"\nResponse推理完成！准确率: {accuracy:.2%} ({correct}/{len(results)})")
-    if error_log:
-        print(f"❌ 发现 {len(error_log)} 个错误示例，已写入 {error_log_file}")
+        predictions.append(pred)
+        references.append([gold])
+        log_lines.append(
+            "Prompt:\n" + r.get("prompt", "") + "\n"
+            "Gold Response: " + str(gold) + "\n"
+            "Predicted Response: " + str(pred) + "\n"
+            "Raw Output:\n" + r.get("raw_output", "") + "\n"
+            + "-" * 50 + "\n"
+        )
+    # 计算BLEU分数
+    sacrebleu = evaluate.load('sacrebleu')
+    bleu_result = sacrebleu.compute(predictions=predictions, references=references)
+    bleu_score = bleu_result["score"]
+    print(f"\nResponse推理完成！BLEU分数: {bleu_score:.2f}")
+    with open(error_log_file, "w", encoding="utf-8") as f:
+        f.writelines(log_lines)
+    print(f"所有gold和pred对比日志已写入 {error_log_file}")
 
 def main():
     parser = argparse.ArgumentParser(description="Domain Inference and Evaluation")
@@ -337,7 +339,7 @@ def main():
             gold_domains_sampled = [gold_domains[r["original_index"]] for r in results]
         else:
             gold_domains_sampled = gold_domains
-        evaluate(results, gold_domains_sampled, args.error_log)
+        evaluate_domains(results, gold_domains_sampled, args.error_log)
 
     elif args.infer_mode == "state":
         print("加载State抽取Prompt数据中...")
