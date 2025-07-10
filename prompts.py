@@ -6,7 +6,7 @@ Extract entity values only from the last utterance by the customer in the conver
 You should focus exclusively on the values mentioned in the last customer utterance, and ignore any information from previous turns.
 
 The possible fields are:
-{fields_desc}
+{fields_desc} 
 
 Do not extract any other fields!
 If a value is not specified, leave it as an empty string.
@@ -18,7 +18,7 @@ Now complete the following example:
 input: {input}  # This is the full dialogue history.
 Customer: {customer}  # This is the last utterance from the customer. Only extract from this.
 output:
-state:
+# Instruction: If none of the fields have a specified value, output an empty dictionary: {{}}. Only output an empty dictionary if all field values are not specified.
 """
 
 # Prompt for response generation（分 domain）
@@ -40,7 +40,7 @@ Customer: {customer}
 state: {state}
 database: {database}
 output:
-response:"""
+"""
 
 HOTEL_RESPONSE_GENERATION_PROMPT = """\
 Definition: You are an assistant that helps people to book a hotel.
@@ -60,7 +60,7 @@ Customer: {customer}
 state: {state}
 database: {database}
 output:
-response:"""
+"""
 
 ATTRACTION_RESPONSE_GENERATION_PROMPT = """\
 Definition: You are an assistant that helps people to find an attraction.
@@ -78,7 +78,7 @@ Customer: {customer}
 state: {state}
 database: {database}
 output:
-response:"""
+"""
 
 TRAIN_RESPONSE_GENERATION_PROMPT = """\
 Definition: You are an assistant that helps people to book a train.
@@ -98,7 +98,7 @@ Customer: {customer}
 state: {state}
 database: {database}
 output:
-response:"""
+"""
 
 TAXI_RESPONSE_GENERATION_PROMPT = """\
 Definition: You are an assistant that helps people to book a taxi.
@@ -116,7 +116,7 @@ Customer: {customer}
 state: {state}
 database: {database}
 output:
-response:"""
+"""
 
 HOSPITAL_RESPONSE_GENERATION_PROMPT = """\
 Definition: You are an assistant that helps people to find a hospital.
@@ -134,7 +134,7 @@ Customer: {customer}
 state: {state}
 database: {database}
 output:
-response:"""
+"""
 
 # Prompt for domain generation
 DOMAIN_RECOGNITION_PROMPT = """
@@ -181,7 +181,6 @@ Now complete the following example:
 {}
 Customer: {}
 
-Domain:
 """
 
 # Helper functions

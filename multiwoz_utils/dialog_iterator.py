@@ -80,6 +80,7 @@ def iterate_dialogues(data, database, context_size=3, domains=DOMAINS, max_dialo
                     'full_state': last_state,
                     'context': '\n'.join(context[-6:]),
                     'response': dialog['turns']['utterance'][tn + 1],
-                    'database': database_results
+                    'database': database_results,
+                    'current_domain': list(state_update.keys())[0] if state_update else domain_gt
                 }
             }

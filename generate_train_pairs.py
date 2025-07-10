@@ -24,11 +24,26 @@ def process_examples(examples, input_keys, output_keys):
                   f"\n{output_str}\n"
     return output + "\n"
 
-def main():
-    # 加载 validation split
-    data = load_multiwoz(split='validation')
+def write_jsonl(filename, prompt_list, gt_key):
+    with open(filename, 'w', encoding='utf-8') as f:
+        for item in prompt_list:
+            prompt = item['prompt']
+            gt = item['gold_result'][gt_key]
+            if isinstance(gt, dict):
+                gt = json.dumps(gt, ensure_ascii=False)
+            f.write(json.dumps({"prompt": prompt, "output": gt}, ensure_ascii=False) + "\n")
 
-    # 加载向量库（如需）
+def write_txt(filename, prompt_list, gt_key):
+    with open(filename, 'w', encoding='utf-8') as f:
+        for item in prompt_list:
+            prompt = item['prompt']
+            gt = item['gold_result'][gt_key]
+            if isinstance(gt, dict):
+                gt = json.dumps(gt, ensure_ascii=False)
+            f.write(f"Prompt:\n{prompt}\nOutput:\n{gt}\n\n")
+
+def main():
+    data = load_multiwoz()
     vec_file_path = "multiwoz-context-db.vec"
     top_k = 5
     embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-mpnet-base-v2")
@@ -41,6 +56,7 @@ def main():
 
     last_dial_id = None
     history = []
+    domain_counter = {}
 
     for it, turn in enumerate(tqdm(iterate_dialogues(data, default_database), desc="Processing", unit="turns")):
         dialog_id = turn['dialogue_id']
@@ -48,7 +64,6 @@ def main():
             history = []
             last_dial_id = dialog_id
 
-        # 当前历史，不含当前 utterance
         history_text = "\n".join(history)
         query_text = turn['page_content']
         results = vector_store.similarity_search(query_text, k=top_k)
@@ -61,7 +76,23 @@ def main():
             'domain': doc.metadata.get('domain', '')
         } for doc in results]
 
-        domain = turn['metadata']['current_domain']
+        domain = turn['metadata']['domain']
+        # 统计 domain 数量
+        domain_counter[domain] = domain_counter.get(domain, 0) + 1
+
+        history_text = "\n".join(history)
+        query_text = turn['page_content']
+        results = vector_store.similarity_search(query_text, k=top_k)
+        examples = [{
+            'context': doc.metadata.get('context', ''),
+            'state': doc.metadata.get('state', ''),
+            'full_state': doc.metadata.get('full_state', ''),
+            'response': doc.metadata.get('response', ''),
+            'database': doc.metadata.get('database', ''),
+            'domain': doc.metadata.get('domain', '')
+        } for doc in results]
+
+        domain = turn['metadata']['domain']
 
         # 1. 状态抽取 prompt
         examples_str = process_examples(
@@ -77,8 +108,7 @@ def main():
             "id": len(state_prompts) + 1,
             "prompt": final_prompt,
             "gold_result": {
-                "gt_state": turn['metadata']['state'],
-                "gt_full_state": turn['metadata']['full_state']
+                "gt_state": turn['metadata']['state']
             }
         })
 
@@ -120,38 +150,23 @@ def main():
             }
         })
 
-        # 更新对话历史
         history.append(f"Customer: {turn['question']}")
         history.append(f"Assistant: {turn['metadata']['response']}")
 
-    # 输出到json文件
-    with open('state_extraction_prompts.json', 'w', encoding='utf-8') as f:
-        json.dump(state_prompts, f, ensure_ascii=False, indent=2)
+    write_jsonl('state_extraction_train.jsonl', state_prompts, 'gt_state')
+    write_jsonl('response_generation_train.jsonl', response_prompts, 'response')
+    write_jsonl('domain_recognition_train.jsonl', domain_prompts, 'domain')
 
-    with open('response_generation_prompts.json', 'w', encoding='utf-8') as f:
-        json.dump(response_prompts, f, ensure_ascii=False, indent=2)
+    write_txt('state_extraction_train.txt', state_prompts, 'gt_state')
+    write_txt('response_generation_train.txt', response_prompts, 'response')
+    write_txt('domain_recognition_train.txt', domain_prompts, 'domain')
 
-    with open('domain_recognition_prompts.json', 'w', encoding='utf-8') as f:
-        json.dump(domain_prompts, f, ensure_ascii=False, indent=2)
-
-    # 输出到txt文件，便于阅读
-    def write_txt(filename, prompts, gold_keys):
-        with open(filename, 'w', encoding='utf-8') as f:
-            for item in prompts:
-                f.write(f"ID: {item['id']}\n")
-                f.write("Prompt:\n" + item['prompt'] + "\n")
-                f.write("Gold Result:\n")
-                for k in gold_keys:
-                    v = item['gold_result'].get(k, '')
-                    f.write(f"  {k}: {v}\n")
-                f.write("\n" + "="*40 + "\n\n")
-
-    write_txt('state_extraction_prompts.txt', state_prompts, ['gt_state', 'gt_full_state'])
-    write_txt('response_generation_prompts.txt', response_prompts, ['response', 'gt_full_state', 'database'])
-    write_txt('domain_recognition_prompts.txt', domain_prompts, ['domain', 'gt_full_state'])
-
-    print("已输出到 state_extraction_prompts.json, response_generation_prompts.json, domain_recognition_prompts.json")
-    print("已输出到 state_extraction_prompts.txt, response_generation_prompts.txt, domain_recognition_prompts.txt")
+    print("已输出 state_extraction_train.jsonl, response_generation_train.jsonl, domain_recognition_train.jsonl")
+    print("各 domain 样本数量：")
+    for domain, count in domain_counter.items():
+        print(f"{domain}: {count}")
 
 if __name__ == "__main__":
-    main() 
+    # main() 
+    data = load_multiwoz()
+    print(data)
