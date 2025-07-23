@@ -53,6 +53,9 @@ def main():
     state_prompts = []
     response_prompts = []
     domain_prompts = []
+    
+    # 新增：用于BERT分类训练的pair收集
+    bert_domain_eval_pairs = []
 
     last_dial_id = None
     history = []
@@ -79,20 +82,6 @@ def main():
         domain = turn['metadata']['domain']
         # 统计 domain 数量
         domain_counter[domain] = domain_counter.get(domain, 0) + 1
-
-        history_text = "\n".join(history)
-        query_text = turn['page_content']
-        results = vector_store.similarity_search(query_text, k=top_k)
-        examples = [{
-            'context': doc.metadata.get('context', ''),
-            'state': doc.metadata.get('state', ''),
-            'full_state': doc.metadata.get('full_state', ''),
-            'response': doc.metadata.get('response', ''),
-            'database': doc.metadata.get('database', ''),
-            'domain': doc.metadata.get('domain', '')
-        } for doc in results]
-
-        domain = turn['metadata']['domain']
 
         # 1. 状态抽取 prompt
         examples_str = process_examples(
@@ -145,9 +134,18 @@ def main():
             "id": len(domain_prompts) + 1,
             "prompt": final_prompt,
             "gold_result": {
-                "domain": turn['metadata']['current_domain'],
+                # "domain": turn['metadata']['current_domain'],
+                "domain": turn['metadata']['domain'],
                 "gt_full_state": turn['gt_state']
             }
+        })
+
+        # 新增：收集BERT分类训练pair
+        bert_source = history_text_domain + "\n" + f"Customer: {turn['question'].strip()}"
+        bert_domain_eval_pairs.append({
+            "source": bert_source,
+            # "target": turn['metadata']['current_domain']
+            "target": turn['metadata']['domain']
         })
 
         history.append(f"Customer: {turn['question']}")
@@ -166,7 +164,13 @@ def main():
     for domain, count in domain_counter.items():
         print(f"{domain}: {count}")
 
+    # 输出BERT分类训练数据
+    with open('bert_domain_train_pairs.jsonl', 'w', encoding='utf-8') as f:
+        for item in bert_domain_eval_pairs:
+            f.write(json.dumps(item, ensure_ascii=False) + '\n')
+    print("已输出到 bert_domain_train_pairs.jsonl")
+
 if __name__ == "__main__":
-    # main() 
-    data = load_multiwoz()
-    print(data)
+    main() 
+    # data = load_multiwoz()
+    # print(data)

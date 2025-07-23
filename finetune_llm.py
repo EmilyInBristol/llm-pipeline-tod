@@ -3,7 +3,6 @@ from datasets import Dataset
 from transformers import AutoTokenizer, AutoModelForCausalLM, TrainingArguments, Trainer, DataCollatorForLanguageModeling
 from peft import LoraConfig, get_peft_model, prepare_model_for_kbit_training, TaskType
 import torch
-
 # 1. 加载数据
 
 def load_jsonl(path):
@@ -65,7 +64,7 @@ training_args = TrainingArguments(
     save_steps=100,
     learning_rate=2e-4,
     fp16=True,
-    evaluation_strategy="no",
+    # evaluation_strategy="no",
     save_total_limit=2,
     dataloader_pin_memory=True,  # A10G内存充足
     remove_unused_columns=False,

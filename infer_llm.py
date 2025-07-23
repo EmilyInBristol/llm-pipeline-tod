@@ -6,6 +6,7 @@ from transformers import AutoTokenizer, AutoModelForCausalLM
 from peft import PeftModel
 import random
 import evaluate  # 新增
+from sklearn.metrics import accuracy_score, classification_report, confusion_matrix  # 新增
 
 def load_model(base_model_path, lora_model_path, use_lora=False, load_in_8bit=False, load_in_4bit=False):
     """加载Tokenizer和LoRA模型"""
@@ -67,13 +68,17 @@ def infer_domains(tokenizer, model, prompts, max_new_tokens=128, num_samples=Non
     return results
 
 def evaluate_domains(results, gold_domains, error_log_file="error_log.txt"):
-    """评估准确率，输出错误日志"""
+    """评估准确率，输出详细评估报告和错误日志"""
     correct = 0
     empty_gold_count = 0
     error_log = []
+    preds = []
+    golds = []
     for i, r in enumerate(results):
         gold = gold_domains[i].lower().strip() if i < len(gold_domains) else ""
         pred = r.get("pred_domain", "").lower().strip()
+        golds.append(gold)
+        preds.append(pred)
         if not gold:
             empty_gold_count += 1
         if gold and pred and pred == gold:
@@ -94,6 +99,13 @@ def evaluate_domains(results, gold_domains, error_log_file="error_log.txt"):
     print(f"gold_domain 为空的数量: {empty_gold_count}")
     if error_log:
         print(f"❌ 发现 {len(error_log)} 个错误示例，已写入 {error_log_file}")
+    # 新增：详细评估输出
+    # 自动统计标签集
+    domain_labels = sorted(list(set([g for g in golds if g])))
+    print("\n详细评估报告：")
+    print(classification_report(golds, preds, labels=domain_labels, digits=3))
+    print("Confusion Matrix:")
+    print(confusion_matrix(golds, preds, labels=domain_labels))
 
 def load_state_prompts(filename):
     """加载状态抽取prompts和gold_state"""

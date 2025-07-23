@@ -6,7 +6,8 @@ BASE_MODEL="Qwen/Qwen3-4B"
 # BASE_MODEL="deepseek-ai/DeepSeek-R1-Distill-Qwen-7B"
 LORA_MODEL="./qwen3_lora_output"
 # INFER_MODE="domain"  # 可选：domain 或 state
-INFER_MODE="state"
+# INFER_MODE="response"
+INFER_MODE="state"  # 可选：domain 或 state
 
 BASE_TAG=${BASE_MODEL//\//_}
 
@@ -14,7 +15,7 @@ if [ "$INFER_MODE" = "domain" ]; then
     PROMPT_ARG="--prompt_file domain_recognition_prompts.json"
     LOG_PREFIX="domain"
 elif [ "$INFER_MODE" = "state" ]; then
-    PROMPT_ARG="--state_prompt_file state_extraction_prompts.json"
+    PROMPT_ARG="--state_prompt_file state_extraction_prompts.filtered.json"
     LOG_PREFIX="state"
 elif [ "$INFER_MODE" = "response" ]; then
     PROMPT_ARG="--response_prompt_file response_generation_prompts.json"
@@ -38,7 +39,7 @@ python3 infer_llm.py --base_model $BASE_MODEL $PROMPT_ARG --infer_mode $INFER_MO
 
 # # 4. 用lora
 # LORA_TAG=${LORA_MODEL//\//_}
-# python3 infer_llm.py --base_model $BASE_MODEL --lora_model $LORA_MODEL $PROMPT_ARG --infer_mode $INFER_MODE --use_lora --max_samples 100 > logs/${LOG_PREFIX}_${BASE_TAG}_${LORA_TAG}_lora.log 2>&1
+# python3 infer_llm.py --base_model $BASE_MODEL --lora_model $LORA_MODEL $PROMPT_ARG --infer_mode $INFER_MODE --use_lora --max_samples 1000 > logs/${LOG_PREFIX}_${BASE_TAG}_${LORA_TAG}_lora.log 2>&1
 
 # # 5. 用lora + 8bit
 # LORA_TAG=${LORA_MODEL//\//_}

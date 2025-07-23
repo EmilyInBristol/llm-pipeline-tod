@@ -21,9 +21,6 @@ def iterate_dialogues(data, database, context_size=3, domains=DOMAINS, max_dialo
     domain_counts = {d: 0 for d in domains}
     
     for dialog in data:
-        # 只选择单domain的样本
-        if 'services' not in dialog or len(dialog['services']) != 1:
-            continue
         dialogue_id = dialog['dialogue_id'].split('.')[0].lower()
         domain_gt = dialog['services'][0] if dialog['services'] else ''
 
@@ -83,7 +80,6 @@ def iterate_dialogues(data, database, context_size=3, domains=DOMAINS, max_dialo
                     'full_state': last_state,
                     'context': '\n'.join(context[-6:]),
                     'response': dialog['turns']['utterance'][tn + 1],
-                    'database': database_results,
-                    'current_domain': list(state_update.keys())[0] if state_update else domain_gt
+                    'database': database_results
                 }
             }

@@ -38,6 +38,9 @@ def main():
     state_prompts = []
     response_prompts = []
     domain_prompts = []
+    
+    # 新增：用于BERT分类评估的pair收集
+    bert_domain_eval_pairs = []
 
     last_dial_id = None
     history = []
@@ -61,7 +64,7 @@ def main():
             'domain': doc.metadata.get('domain', '')
         } for doc in results]
 
-        domain = turn['metadata']['current_domain']
+        domain = turn['metadata']['domain']
 
         # 1. 状态抽取 prompt
         examples_str = process_examples(
@@ -74,7 +77,7 @@ def main():
             customer=turn['question'].strip()
         )
         state_prompts.append({
-            "id": len(state_prompts) + 1,
+            "id": turn['dialogue_id'],
             "prompt": final_prompt,
             "gold_result": {
                 "gt_state": turn['metadata']['state'],
@@ -96,7 +99,7 @@ def main():
             database=turn['metadata']['database']
         )
         response_prompts.append({
-            "id": len(response_prompts) + 1,
+            "id": turn['dialogue_id'],
             "prompt": final_prompt,
             "gold_result": {
                 "response": turn['metadata']['response'],
@@ -112,12 +115,19 @@ def main():
             turn['question'].strip()
         )
         domain_prompts.append({
-            "id": len(domain_prompts) + 1,
+            "id": turn['dialogue_id'],
             "prompt": final_prompt,
             "gold_result": {
-                "domain": turn['metadata']['current_domain'],
+                "domain": turn['metadata']['domain'],
                 "gt_full_state": turn['gt_state']
             }
+        })
+        # 新增：收集BERT分类评估pair
+        # source为history_text_domain和当前Customer输入
+        bert_source = history_text_domain + "\n" + f"Customer: {turn['question'].strip()}"
+        bert_domain_eval_pairs.append({
+            "source": bert_source,
+            "target": turn['metadata']['domain']
         })
 
         # 更新对话历史
@@ -152,6 +162,12 @@ def main():
 
     print("已输出到 state_extraction_prompts.json, response_generation_prompts.json, domain_recognition_prompts.json")
     print("已输出到 state_extraction_prompts.txt, response_generation_prompts.txt, domain_recognition_prompts.txt")
+
+    # 新增：输出BERT分类评估数据
+    with open('bert_domain_eval_pairs.jsonl', 'w', encoding='utf-8') as f:
+        for item in bert_domain_eval_pairs:
+            f.write(json.dumps(item, ensure_ascii=False) + '\n')
+    print("已输出到 bert_domain_eval_pairs.jsonl")
 
 if __name__ == "__main__":
     main() 
