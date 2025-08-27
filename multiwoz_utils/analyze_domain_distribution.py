@@ -14,7 +14,7 @@ for split in splits:
     single_domain_count = 0
     multi_domain_count = 0
     single_domain_detail = Counter()
-    # 新增：统计每个domain下的对话长度
+    # New: Count dialogue length for each domain
     domain_lengths = defaultdict(list)
     for dialog in data:
         services = dialog.get('services', [])
@@ -25,7 +25,7 @@ for split in splits:
         if len(services) == 1:
             single_domain_count += 1
             single_domain_detail[domain] += 1
-            # 记录所有主domain的对话长度
+            # Record dialogue length for all main domains
             domain_lengths[domain].append(dialog_len)
         elif len(services) > 1:
             multi_domain_count += 1

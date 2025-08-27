@@ -54,7 +54,7 @@ def main():
     response_prompts = []
     domain_prompts = []
     
-    # 新增：用于BERT分类训练的pair收集
+    # New: Collect pairs for BERT classification training
     bert_domain_eval_pairs = []
 
     last_dial_id = None
@@ -80,10 +80,10 @@ def main():
         } for doc in results]
 
         domain = turn['metadata']['domain']
-        # 统计 domain 数量
+        # Count domain numbers
         domain_counter[domain] = domain_counter.get(domain, 0) + 1
 
-        # 1. 状态抽取 prompt
+        # 1. State extraction prompt
         examples_str = process_examples(
             examples, ['context'], ['state']
         )
@@ -93,15 +93,17 @@ def main():
             input=history_text,
             customer=turn['question'].strip()
         )
-        state_prompts.append({
-            "id": len(state_prompts) + 1,
-            "prompt": final_prompt,
-            "gold_result": {
-                "gt_state": turn['metadata']['state']
-            }
-        })
+        # Only add when gt_state is not empty
+        if turn['gt_state']:
+            state_prompts.append({
+                "id": len(state_prompts) + 1,
+                "prompt": final_prompt,
+                "gold_result": {
+                    "gt_state": turn['metadata']['state']
+                }
+            })
 
-        # 2. 回答生成 prompt
+        # 2. Response generation prompt
         examples_str = process_examples(
             examples, ["context", "full_state", "database"], ["response"]
         )
@@ -114,17 +116,19 @@ def main():
             state=turn['gt_state'],
             database=turn['metadata']['database']
         )
-        response_prompts.append({
-            "id": len(response_prompts) + 1,
-            "prompt": final_prompt,
-            "gold_result": {
-                "response": turn['metadata']['response'],
-                "gt_full_state": turn['gt_state'],
-                "database": turn['metadata']['database']
-            }
-        })
+        # Only add when gt_state is not empty
+        if turn['gt_state']:
+            response_prompts.append({
+                "id": len(response_prompts) + 1,
+                "prompt": final_prompt,
+                "gold_result": {
+                    "response": turn['metadata']['response'],
+                    "gt_full_state": turn['gt_state'],
+                    "database": turn['metadata']['database']
+                }
+            })
 
-        # 3. 域识别 prompt
+        # 3. Domain recognition prompt
         history_text_domain = "\n".join(history[-2:])
         final_prompt = DOMAIN_RECOGNITION_PROMPT.format(
             history_text_domain,
@@ -140,7 +144,7 @@ def main():
             }
         })
 
-        # 新增：收集BERT分类训练pair
+        # New: Collect BERT classification training pairs
         bert_source = history_text_domain + "\n" + f"Customer: {turn['question'].strip()}"
         bert_domain_eval_pairs.append({
             "source": bert_source,
@@ -159,16 +163,16 @@ def main():
     write_txt('response_generation_train.txt', response_prompts, 'response')
     write_txt('domain_recognition_train.txt', domain_prompts, 'domain')
 
-    print("已输出 state_extraction_train.jsonl, response_generation_train.jsonl, domain_recognition_train.jsonl")
-    print("各 domain 样本数量：")
+    print("Output state_extraction_train.jsonl, response_generation_train.jsonl, domain_recognition_train.jsonl")
+    print("Sample counts by domain:")
     for domain, count in domain_counter.items():
         print(f"{domain}: {count}")
 
-    # 输出BERT分类训练数据
+    # Output BERT classification training data
     with open('bert_domain_train_pairs.jsonl', 'w', encoding='utf-8') as f:
         for item in bert_domain_eval_pairs:
             f.write(json.dumps(item, ensure_ascii=False) + '\n')
-    print("已输出到 bert_domain_train_pairs.jsonl")
+    print("Output to bert_domain_train_pairs.jsonl")
 
 if __name__ == "__main__":
     main() 

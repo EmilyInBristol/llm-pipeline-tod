@@ -96,7 +96,7 @@ class BertDomainClassifier:
                 optimizer.step()
                 scheduler.step()
                 total_loss += loss.item()
-                # 记录训练集预测
+                # Record training set predictions
                 preds = torch.argmax(outputs.logits, dim=-1).detach().cpu().tolist()
                 all_preds.extend(preds)
                 all_labels.extend(batch_labels.detach().cpu().tolist())
@@ -104,8 +104,8 @@ class BertDomainClassifier:
             train_acc = accuracy_score(all_labels, all_preds)
             history['train_loss'].append(avg_loss)
             history['train_acc'].append(train_acc)
-            print(f'Epoch {epoch+1} 平均loss: {avg_loss:.4f} 训练集准确率: {train_acc:.4f}')
-            # 验证集评估
+            print(f'Epoch {epoch+1} Average loss: {avg_loss:.4f} Training accuracy: {train_acc:.4f}')
+            # Validation set evaluation
             val_loss, val_acc = None, None
             if eval_texts and eval_labels:
                 self.model.eval()
@@ -128,7 +128,7 @@ class BertDomainClassifier:
                 val_loss = np.mean(val_losses)
                 history['val_loss'].append(val_loss)
                 history['val_acc'].append(val_acc)
-                print(f'Epoch {epoch+1} 验证集loss: {val_loss:.4f} 验证集准确率: {val_acc:.4f}')
+                print(f'Epoch {epoch+1} Validation loss: {val_loss:.4f} Validation accuracy: {val_acc:.4f}')
                 self.model.train()
             else:
                 history['val_loss'].append(None)
@@ -136,8 +136,8 @@ class BertDomainClassifier:
         if save_path:
             self.model.save_pretrained(save_path)
             self.tokenizer.save_pretrained(save_path)
-            print(f'模型已保存到: {save_path}')
-        # 画曲线
+            print(f'Model saved to: {save_path}')
+        # Plot curves
         epochs_range = range(1, epochs+1)
         plt.figure(figsize=(10,5))
         plt.plot(epochs_range, history['train_loss'], label='Train Loss')
@@ -159,7 +159,7 @@ class BertDomainClassifier:
         plt.title('Accuracy Curve')
         plt.savefig('train_val_acc_curve.png')
         plt.close()
-        print('训练/验证集loss和accuracy曲线已保存为train_val_loss_curve.png和train_val_acc_curve.png')
+        print('Training/validation loss and accuracy curves saved as train_val_loss_curve.png and train_val_acc_curve.png')
 
 # ========== 3. LLM Prompt Classification ==========
 
@@ -175,24 +175,24 @@ def evaluate(gold, pred, method_name):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--mode', choices=['train', 'eval'], default='eval', help='train or eval')
-    parser.add_argument('--train_file', type=str, default='bert_domain_train_pairs.jsonl', help='训练集文件')
-    parser.add_argument('--eval_file', type=str, default='bert_domain_eval_pairs.jsonl', help='评估集文件')
-    parser.add_argument('--epochs', type=int, default=3, help='训练轮数')
-    parser.add_argument('--save_path', type=str, default='bert_finetuned', help='模型保存路径')
-    parser.add_argument('--model_path', type=str, default=BERT_MODEL_PATH, help='BERT模型路径')
+    parser.add_argument('--train_file', type=str, default='bert_domain_train_pairs.jsonl', help='Training set file')
+    parser.add_argument('--eval_file', type=str, default='bert_domain_eval_pairs.jsonl', help='Evaluation set file')
+    parser.add_argument('--epochs', type=int, default=3, help='Number of training epochs')
+    parser.add_argument('--save_path', type=str, default='bert_finetuned', help='Model save path')
+    parser.add_argument('--model_path', type=str, default=BERT_MODEL_PATH, help='BERT model path')
     args = parser.parse_args()
 
     if args.mode == 'train':
         print('==== BERT Classifier Training ===')
         train_texts, train_labels = load_texts_and_labels(args.train_file)
         eval_texts, eval_labels = load_texts_and_labels(args.eval_file)
-        # 打印训练集domain分布
-        print('训练集 domain 分布：')
+        # Print training set domain distribution
+        print('Training set domain distribution:')
         for domain, count in Counter(train_labels).items():
             print(f'{domain}: {count}')
         print('-' * 40)
-        # 打印验证集domain分布
-        print('验证集 domain 分布：')
+        # Print validation set domain distribution
+        print('Validation set domain distribution:')
         for domain, count in Counter(eval_labels).items():
             print(f'{domain}: {count}')
         print('-' * 40)
@@ -201,9 +201,9 @@ def main():
     elif args.mode == 'eval':
         print('==== BERT Classifier Evaluation ===')
         eval_texts, eval_labels = load_texts_and_labels(args.eval_file)
-        # domain分布
+        # Domain distribution
         domain_counter = Counter(eval_labels)
-        print("评估数据 domain 分布：")
+        print("Evaluation data domain distribution:")
         for domain, count in domain_counter.items():
             print(f"{domain}: {count}")
         print("-" * 40)
@@ -211,7 +211,7 @@ def main():
         bert_preds = bert_clf.predict(eval_texts)
         evaluate(eval_labels, bert_preds, 'BERT')
     else:
-        raise ValueError('mode必须是train或eval')
+        raise ValueError('mode must be train or eval')
 
 if __name__ == '__main__':
     main() 

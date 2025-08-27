@@ -21,7 +21,7 @@ def iterate_dialogues(data, database, context_size=3, domains=DOMAINS, max_dialo
     domain_counts = {d: 0 for d in domains}
     
     for dialog in data:
-        # 只选择单domain的样本
+        # Only select single-domain samples
         if 'services' not in dialog or len(dialog['services']) != 1:
             continue
         dialogue_id = dialog['dialogue_id'].split('.')[0].lower()
@@ -87,3 +87,23 @@ def iterate_dialogues(data, database, context_size=3, domains=DOMAINS, max_dialo
                     'current_domain': list(state_update.keys())[0] if state_update else domain_gt
                 }
             }
+
+if __name__ == "__main__":
+    import sys
+    sys.path.append("..")  # Ensure multiwoz_utils modules can be imported
+
+    import data_loader
+
+    # Assume data_loader.py has a load_data function that returns dialogue data list
+    # You can adjust based on the actual function name
+    data = data_loader.load_multiwoz()  # Please modify based on actual function name
+
+    class MockDatabase:
+        def query(self, domain, domain_state):
+            return [1]  # Simple simulation
+
+    # Only print first 3 samples
+    for i, item in enumerate(iterate_dialogues(data, MockDatabase())):
+        print(json.dumps(item, ensure_ascii=False, indent=2))
+        if i >= 2:
+            break

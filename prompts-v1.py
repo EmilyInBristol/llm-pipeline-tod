@@ -21,7 +21,7 @@ output:
 # Instruction: If none of the fields have a specified value, output an empty dictionary: {{}}. Only output an empty dictionary if all field values are not specified.
 """
 
-# Prompt for response generation（分 domain）
+# Prompt for response generation (by domain)
 RESTAURANT_RESPONSE_GENERATION_PROMPT = """\
 Definition: You are an assistant that helps people to book a restaurant.
 You can search for a restaurant by area, food, or price.

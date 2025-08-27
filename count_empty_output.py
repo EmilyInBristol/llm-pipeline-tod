@@ -12,16 +12,16 @@ with open(file_path, "r", encoding="utf-8") as f:
         total += 1
         try:
             data = json.loads(line)
-            # 判断 output 是否为字符串类型的空字典
+            # Check if output is an empty dictionary string
           
             if "output" in data and data["output"].strip() == "{}":
                 empty_output += 1
         except Exception as e:
-            print(f"解析出错: {e}")
+            print(f"Parsing error: {e}")
 
 if total > 0:
-    print(f"output为空字典的行数: {empty_output}")
-    print(f"总行数: {total}")
-    print(f"占比: {empty_output / total:.2%}")
+    print(f"Lines with empty output: {empty_output}")
+    print(f"Total lines: {total}")
+    print(f"Percentage: {empty_output / total:.2%}")
 else:
-    print("文件为空或无有效数据") 
+    print("File is empty or has no valid data") 

@@ -25,10 +25,10 @@ def process_examples(examples, input_keys, output_keys):
     return output + "\n"
 
 def main():
-    # 加载 validation split
+    # Load validation split
     data = load_multiwoz(split='validation')
 
-    # 加载向量库（如需）
+    # Load vector store (if needed)
     vec_file_path = "multiwoz-context-db.vec"
     top_k = 5
     embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-mpnet-base-v2")
@@ -39,7 +39,7 @@ def main():
     response_prompts = []
     domain_prompts = []
     
-    # 新增：用于BERT分类评估的pair收集
+    # New: Collect pairs for BERT classification evaluation
     bert_domain_eval_pairs = []
 
     last_dial_id = None
@@ -51,7 +51,7 @@ def main():
             history = []
             last_dial_id = dialog_id
 
-        # 当前历史，不含当前 utterance
+        # Current history, excluding current utterance
         history_text = "\n".join(history)
         query_text = turn['page_content']
         results = vector_store.similarity_search(query_text, k=top_k)
@@ -66,7 +66,7 @@ def main():
 
         domain = turn['metadata']['domain']
 
-        # 1. 状态抽取 prompt
+        # 1. State extraction prompt
         examples_str = process_examples(
             examples, ['context'], ['state']
         )
@@ -76,16 +76,18 @@ def main():
             input=history_text,
             customer=turn['question'].strip()
         )
-        state_prompts.append({
-            "id": turn['dialogue_id'],
-            "prompt": final_prompt,
-            "gold_result": {
-                "gt_state": turn['metadata']['state'],
-                "gt_full_state": turn['metadata']['full_state']
-            }
-        })
+        # Only add when gt_state is not empty
+        if turn['gt_state']:
+            state_prompts.append({
+                "id": turn['dialogue_id'],
+                "prompt": final_prompt,
+                "gold_result": {
+                    "gt_state": turn['metadata']['state'],
+                    "gt_full_state": turn['metadata']['full_state']
+                }
+            })
 
-        # 2. 回答生成 prompt
+        # 2. Response generation prompt
         examples_str = process_examples(
             examples, ["context", "full_state", "database"], ["response"]
         )
@@ -98,17 +100,19 @@ def main():
             state=turn['gt_state'],
             database=turn['metadata']['database']
         )
-        response_prompts.append({
-            "id": turn['dialogue_id'],
-            "prompt": final_prompt,
-            "gold_result": {
-                "response": turn['metadata']['response'],
-                "gt_full_state": turn['gt_state'],
-                "database": turn['metadata']['database']
-            }
-        })
+        # Only add when gt_state is not empty
+        if turn['gt_state']:
+            response_prompts.append({
+                "id": turn['dialogue_id'],
+                "prompt": final_prompt,
+                "gold_result": {
+                    "response": turn['metadata']['response'],
+                    "gt_full_state": turn['gt_state'],
+                    "database": turn['metadata']['database']
+                }
+            })
 
-        # 3. 域识别 prompt
+        # 3. Domain recognition prompt
         history_text_domain = "\n".join(history[-2:])
         final_prompt = DOMAIN_RECOGNITION_PROMPT.format(
             history_text_domain,
@@ -122,19 +126,19 @@ def main():
                 "gt_full_state": turn['gt_state']
             }
         })
-        # 新增：收集BERT分类评估pair
-        # source为history_text_domain和当前Customer输入
+        # New: Collect BERT classification evaluation pairs
+        # source is history_text_domain and current Customer input
         bert_source = history_text_domain + "\n" + f"Customer: {turn['question'].strip()}"
         bert_domain_eval_pairs.append({
             "source": bert_source,
             "target": turn['metadata']['domain']
         })
 
-        # 更新对话历史
+        # Update dialogue history
         history.append(f"Customer: {turn['question']}")
         history.append(f"Assistant: {turn['metadata']['response']}")
 
-    # 输出到json文件
+    # Output to json files
     with open('state_extraction_prompts.json', 'w', encoding='utf-8') as f:
         json.dump(state_prompts, f, ensure_ascii=False, indent=2)
 
@@ -144,7 +148,7 @@ def main():
     with open('domain_recognition_prompts.json', 'w', encoding='utf-8') as f:
         json.dump(domain_prompts, f, ensure_ascii=False, indent=2)
 
-    # 输出到txt文件，便于阅读
+    # Output to txt files for easy reading
     def write_txt(filename, prompts, gold_keys):
         with open(filename, 'w', encoding='utf-8') as f:
             for item in prompts:
@@ -160,14 +164,14 @@ def main():
     write_txt('response_generation_prompts.txt', response_prompts, ['response', 'gt_full_state', 'database'])
     write_txt('domain_recognition_prompts.txt', domain_prompts, ['domain', 'gt_full_state'])
 
-    print("已输出到 state_extraction_prompts.json, response_generation_prompts.json, domain_recognition_prompts.json")
-    print("已输出到 state_extraction_prompts.txt, response_generation_prompts.txt, domain_recognition_prompts.txt")
+    print("Output to state_extraction_prompts.json, response_generation_prompts.json, domain_recognition_prompts.json")
+    print("Output to state_extraction_prompts.txt, response_generation_prompts.txt, domain_recognition_prompts.txt")
 
-    # 新增：输出BERT分类评估数据
+    # New: Output BERT classification evaluation data
     with open('bert_domain_eval_pairs.jsonl', 'w', encoding='utf-8') as f:
         for item in bert_domain_eval_pairs:
             f.write(json.dumps(item, ensure_ascii=False) + '\n')
-    print("已输出到 bert_domain_eval_pairs.jsonl")
+    print("Output to bert_domain_eval_pairs.jsonl")
 
 if __name__ == "__main__":
     main() 

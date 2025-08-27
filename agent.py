@@ -7,7 +7,7 @@ from qwen_agent.tools.base import BaseTool, register_tool
 from qwen_agent.utils.output_beautify import typewriter_print
 from multiwoz_utils.database import default_database
 
-# ========== Ontology工具 ==========
+# ========== Ontology Tool ==========
 @register_tool('ontology_lookup')
 class OntologyLookupTool(BaseTool):
     description = 'Ontology lookup tool. Input domain and slot, return possible values for the slot. Both domain and slot should be in English and lowercase.'
@@ -19,15 +19,15 @@ class OntologyLookupTool(BaseTool):
         args = json.loads(params)
         domain = args.get('domain')
         slot = args.get('slot')
-        # 读取ontology.json
+        # Read ontology.json
         with open('ontology.json', 'r', encoding='utf-8') as f:
             ontology = json.load(f)
-        # 兼容key格式 domain-slot
+        # Compatible with key format domain-slot
         key = f"{domain}-{slot}"
         values = ontology.get(key, [])
         return json.dumps({'domain': domain, 'slot': slot, 'values': values}, ensure_ascii=False)
 
-# ========== MultiWOZ数据库查询工具 ==========
+# ========== MultiWOZ Database Query Tool ==========
 @register_tool('multiwoz_db_query')
 class MultiwozDBQueryTool(BaseTool):
     description = (
@@ -53,11 +53,11 @@ class MultiwozDBQueryTool(BaseTool):
         result = default_database.query(domain, constraints)
         return json.dumps({'result': result}, ensure_ascii=False)
 
-# ========== 自动生成ontology精简prompt片段 ==========
+# ========== Auto-generate ontology concise prompt fragment ==========
 def build_ontology_prompt():
     with open('ontology.json', 'r', encoding='utf-8') as f:
         ontology = json.load(f)
-    # 统计所有domain和slot
+    # Count all domains and slots
     domain_slots = {}
     for key in ontology:
         if '-' in key:
@@ -71,14 +71,14 @@ def build_ontology_prompt():
         lines.append(f"- {domain}: {slot_str}")
     return '\n'.join(lines)
 
-# ========== 读取few-shot示例 ==========
+# ========== Load few-shot examples ==========
 def load_few_shot_examples():
     file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'agent_test_samples.txt')
     if not os.path.exists(file_path):
         return ''
     with open(file_path, 'r', encoding='utf-8') as f:
         content = f.read().strip()
-    # 工具调用few-shot示例
+    # Tool call few-shot example
     tool_demo = (
         "User: I want to book a train from Cambridge to Stansted Airport on Saturday.\n"
         "Assistant: Let me check the available trains for you.\n"
@@ -86,12 +86,12 @@ def load_few_shot_examples():
         "#TOOL_RESULT: [{\"trainid\": \"TR3128\", \"departure\": \"cambridge\", \"destination\": \"stansted airport\", \"day\": \"saturday\", \"leaveat\": \"20:40\", \"arriveby\": \"21:08\"}]\n"
         "Assistant: There is a train TR3128 leaving at 20:40 and arriving at 21:08. Would you like to book it?\n"
     )
-    # 只保留前2个多轮对话
+    # Only keep first 2 multi-turn dialogues
     dialogues = content.split('\n\n')
     first_two = '\n\n'.join(dialogues[:2])
     return f"\nHere is a tool-use dialogue example (DO NOT make up any entity, always use the tool):\n{tool_demo}\nHere are real multi-turn dialogue examples between user and assistant:\n{first_two}\n"
 
-# ========== system prompt设计 ==========
+# ========== System prompt design ==========
 ontology_brief = build_ontology_prompt()
 few_shot_examples = load_few_shot_examples()
 system_instruction = f'''
@@ -112,25 +112,25 @@ llm_cfg = {
     'model_server': 'http://localhost:11434/v1',
     'api_key': 'ollama',
     # 'generate_cfg': {
-        # (可选) LLM超参数:
-        # 该参数会影响工具调用解析逻辑，默认False:
-        # 设置为True: 当内容为`<think>这是思考</think>这是答案`
-        # 设置为False: 响应由reasoning_content和content组成
+        # (Optional) LLM hyperparameters:
+        # This parameter affects tool call parsing logic, default False:
+        # Set to True: when content is `<think>This is thinking</think>This is answer`
+        # Set to False: response consists of reasoning_content and content
         # 'thought_in_content': True,
 
-        # 工具调用模板: 默认为nous（推荐qwen3）:
+        # Tool call template: default is nous (recommended for qwen3):
         # 'fncall_prompt_type': 'nous',
 
-        # 最大输入长度，超出会截断消息，请根据模型API调整:
+        # Maximum input length, messages will be truncated if exceeded, adjust based on model API:
         # 'max_input_tokens': 512,
 
-        # 直接传递给模型API的参数，如top_p、enable_thinking等，具体参考API说明:
+        # Parameters passed directly to model API, such as top_p, enable_thinking, etc., refer to API documentation:
         'top_p': 0.95,
         'temperature': 0.6,
         'top_k': 20,
         'min_p': 0,
         'enable_thinking': True,
-        # 建议输出长度：大多数查询建议32768，复杂任务可用38912
+        # Recommended output length: 32768 for most queries, 38912 for complex tasks
         'max_tokens': 32768
     # }
 }
@@ -147,7 +147,7 @@ if __name__ == '__main__':
     while True:
         query = input('\nUser: ')
         if query.strip().lower() == 'exit':
-            print('已退出对话。')
+            print('Exited conversation.')
             break
         messages.append({'role': 'user', 'content': query})
         print('Agent:')

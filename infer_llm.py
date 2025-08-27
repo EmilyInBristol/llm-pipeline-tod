@@ -5,11 +5,11 @@ from tqdm import tqdm
 from transformers import AutoTokenizer, AutoModelForCausalLM
 from peft import PeftModel
 import random
-import evaluate  # 新增
-from sklearn.metrics import accuracy_score, classification_report, confusion_matrix  # 新增
+import evaluate  # New
+from sklearn.metrics import accuracy_score, classification_report, confusion_matrix  # New
 
 def load_model(base_model_path, lora_model_path, use_lora=False, load_in_8bit=False, load_in_4bit=False):
-    """加载Tokenizer和LoRA模型"""
+    """Load Tokenizer and LoRA model"""
     tokenizer = AutoTokenizer.from_pretrained(base_model_path, trust_remote_code=True)
     model = AutoModelForCausalLM.from_pretrained(
         base_model_path,
@@ -24,7 +24,7 @@ def load_model(base_model_path, lora_model_path, use_lora=False, load_in_8bit=Fa
     return tokenizer, model
 
 def load_prompts(filename):
-    """加载域识别prompts和gold_domains"""
+    """Load domain recognition prompts and gold_domains"""
     with open(filename, 'r', encoding='utf-8') as f:
         data = json.load(f)
     prompts = [item["prompt"] for item in data if "prompt" in item]
@@ -32,7 +32,7 @@ def load_prompts(filename):
     return prompts, gold_domains
 
 def infer_domains(tokenizer, model, prompts, max_new_tokens=128, num_samples=None):
-    """批量推理，返回推理结果。对prompts随机采样num_samples个样本进行推理。"""
+    """Batch inference, return inference results. Randomly sample num_samples from prompts for inference."""
     results = []
     if num_samples is not None and num_samples < len(prompts):
         sampled_indices = random.sample(range(len(prompts)), num_samples)
@@ -41,8 +41,8 @@ def infer_domains(tokenizer, model, prompts, max_new_tokens=128, num_samples=Non
         sampled_indices = list(range(len(prompts)))
         sampled_prompts = prompts
 
-    for idx, prompt in tqdm(list(enumerate(sampled_prompts)), desc="推理中"):
-        # 构造 chat_template 输入
+    for idx, prompt in tqdm(list(enumerate(sampled_prompts)), desc="Inferencing"):
+        # Construct chat_template input
         messages = [
             {"role": "user", "content": prompt}
         ]
@@ -50,25 +50,25 @@ def infer_domains(tokenizer, model, prompts, max_new_tokens=128, num_samples=Non
             messages,
             tokenize=False,
             add_generation_prompt=True,
-            enable_thinking=False  # 关闭thinking模式
+            enable_thinking=False  # Turn off thinking mode
         )
         model_inputs = tokenizer([text], return_tensors="pt").to(model.device)
         outputs = model.generate(**model_inputs, max_new_tokens=max_new_tokens)
-        # 只取新生成的内容
+        # Only take newly generated content
         output_ids = outputs[0][len(model_inputs.input_ids[0]):].tolist()
         generated_text = tokenizer.decode(output_ids, skip_special_tokens=True).strip("\n")
-        # 归一化处理
+        # Normalization processing
         pred_domain = generated_text.lower().strip()
         results.append({
             "prompt": prompt,
-            "pred_domain": pred_domain,  # 直接用归一化后的内容
+            "pred_domain": pred_domain,  # Use normalized content directly
             "raw_output": generated_text,
-            "original_index": sampled_indices[idx]  # 记录原始索引，便于后续对齐gold_domains
+            "original_index": sampled_indices[idx]  # Record original index for subsequent alignment with gold_domains
         })
     return results
 
 def evaluate_domains(results, gold_domains, error_log_file="error_log.txt"):
-    """评估准确率，输出详细评估报告和错误日志"""
+    """Evaluate accuracy, output detailed evaluation report and error log"""
     correct = 0
     empty_gold_count = 0
     error_log = []
@@ -95,20 +95,20 @@ def evaluate_domains(results, gold_domains, error_log_file="error_log.txt"):
         with open(error_log_file, "w", encoding='utf-8') as f:
             f.writelines(error_log)
     accuracy = correct / len(results) if results else 0
-    print(f"\n推理完成！准确率: {accuracy:.2%} ({correct}/{len(results)})")
-    print(f"gold_domain 为空的数量: {empty_gold_count}")
+    print(f"\nInference finished! Accuracy: {accuracy:.2%} ({correct}/{len(results)})")
+    print(f"Number of empty gold_domain: {empty_gold_count}")
     if error_log:
-        print(f"❌ 发现 {len(error_log)} 个错误示例，已写入 {error_log_file}")
-    # 新增：详细评估输出
-    # 自动统计标签集
+        print(f"❌ Found {len(error_log)} error cases, written to {error_log_file}")
+    # New: Detailed evaluation output
+    # Auto-statistics label set
     domain_labels = sorted(list(set([g for g in golds if g])))
-    print("\n详细评估报告：")
+    print("\nDetailed evaluation report:")
     print(classification_report(golds, preds, labels=domain_labels, digits=3))
     print("Confusion Matrix:")
     print(confusion_matrix(golds, preds, labels=domain_labels))
 
 def load_state_prompts(filename):
-    """加载状态抽取prompts和gold_state"""
+    """Load state extraction prompts and gold_state"""
     with open(filename, 'r', encoding='utf-8') as f:
         data = json.load(f)
     prompts = [item["prompt"] for item in data if "prompt" in item]
@@ -118,9 +118,9 @@ def load_state_prompts(filename):
     return prompts, gold_states, gold_full_states
 
 def parse_state_output(state_str):
-    """将模型输出的state字符串解析为dict"""
+    """Parse the state string output from model into dict"""
     try:
-        # 只取第一个大括号内容
+        # Only take the first brace content
         match = re.search(r'\{.*\}', state_str, re.DOTALL)
         if match:
             state_str = match.group(0)
@@ -133,7 +133,7 @@ def parse_state_output(state_str):
 
 
 def infer_states(tokenizer, model, prompts, max_new_tokens=128, num_samples=None):
-    """批量推理，返回state抽取结果。对prompts随机采样num_samples个样本进行推理。"""
+    """Batch inference, return state extraction results. Randomly sample num_samples from prompts for inference."""
     results = []
     if num_samples is not None and num_samples < len(prompts):
         sampled_indices = random.sample(range(len(prompts)), num_samples)
@@ -142,7 +142,7 @@ def infer_states(tokenizer, model, prompts, max_new_tokens=128, num_samples=None
         sampled_indices = list(range(len(prompts)))
         sampled_prompts = prompts
 
-    for idx, prompt in tqdm(list(enumerate(sampled_prompts)), desc="State推理中"):
+    for idx, prompt in tqdm(list(enumerate(sampled_prompts)), desc="State Inferencing"):
         messages = [
             {"role": "user", "content": prompt}
         ]
@@ -166,7 +166,7 @@ def infer_states(tokenizer, model, prompts, max_new_tokens=128, num_samples=None
     return results
 
 def flatten_state(state):
-    """将state字典（可能有domain，也可能没有）拉平成归一化(slot, value)集合"""
+    """Flatten state dictionary (may or may not have domain) into normalized (slot, value) set"""
     flat = set()
     if not isinstance(state, dict):
         return flat
@@ -175,27 +175,30 @@ def flatten_state(state):
             return x.lower().strip()
         return str(x).lower().strip()
     for k, v in state.items():
-        if isinstance(v, dict):  # 有domain
+        if isinstance(v, dict):  # Has domain
             for slot, value in v.items():
                 flat.add((norm(slot), norm(value)))
-        else:  # 无domain，直接是slot
+        else:  # No domain, directly slot
             flat.add((norm(k), norm(v)))
     return flat
 
 def evaluate_states_v2(results, gold_states, gold_full_states):
-    """更细致的state抽取评估，忽略domain，只按slot/value对比"""
+    """More detailed state extraction evaluation, ignore domain, only compare by slot/value"""
     total = len(results)
-    perfect = 0
+    JGA = 0
     missing = 0
     badcase = 0
     acceptable_extra = 0
 
     logs = {
-        "perfect": [],
+        "JGA": [],
         "missing": [],
         "badcase": [],
         "acceptable_extra": []
     }
+
+    # New: Slot-value level F1 statistics
+    all_tp, all_fp, all_fn = 0, 0, 0  # Micro F1
 
     for i, r in enumerate(results):
         gold = gold_states[i] if i < len(gold_states) else {}
@@ -206,58 +209,74 @@ def evaluate_states_v2(results, gold_states, gold_full_states):
         full_slots = flatten_state(gold_full)
         pred_slots = flatten_state(pred)
 
-        # 完全一致
+        # Slot-value level F1 statistics
+        tp = len(pred_slots & gold_slots)
+        fp = len(pred_slots - gold_slots)
+        fn = len(gold_slots - pred_slots)
+        all_tp += tp
+        all_fp += fp
+        all_fn += fn
+
+        # JGA: Complete match
         if pred_slots == gold_slots:
-            perfect += 1
-            logs["perfect"].append(f"Prompt:\n{r.get('prompt','')}\nGold: {gold}\nPred: {pred}\nRaw: {r.get('raw_output','')}\n{'-'*50}\n")
+            JGA += 1
+            logs["JGA"].append(f"Prompt:\n{r.get('prompt','')}\nGold: {gold}\nPred: {pred}\nRaw: {r.get('raw_output','')}\n{'-'*50}\n")
             continue
 
-        # 预测多出来的slot
+        # Extra predicted slots
         extra_slots = pred_slots - gold_slots
-        # 漏掉的slot
+        # Missing slots
         missing_slots = gold_slots - pred_slots
 
-        # badcase: 预测的slot有不在full_state中的
+        # Badcase: predicted slots not in full_state
         if any(slot not in full_slots for slot in extra_slots):
             badcase += 1
-            logs["badcase"].append(f"Prompt:\n{r.get('prompt','')}\nGold: {gold}\nFull: {gold_full}\nPred: {pred}\n多预测且不在full_state: {extra_slots - full_slots}\nRaw: {r.get('raw_output','')}\n{'-'*50}\n")
-        # 可接受的多预测：多出来的slot都在full_state中
+            logs["badcase"].append(f"Prompt:\n{r.get('prompt','')}\nGold: {gold}\nFull: {gold_full}\nPred: {pred}\nExtra predictions not in full_state: {extra_slots - full_slots}\nRaw: {r.get('raw_output','')}\n{'-'*50}\n")
+        # Acceptable extra: extra slots are all in full_state
         elif extra_slots and all(slot in full_slots for slot in extra_slots):
             acceptable_extra += 1
-            logs["acceptable_extra"].append(f"Prompt:\n{r.get('prompt','')}\nGold: {gold}\nFull: {gold_full}\nPred: {pred}\n多预测但都在full_state: {extra_slots}\nRaw: {r.get('raw_output','')}\n{'-'*50}\n")
-        # 漏召回
+            logs["acceptable_extra"].append(f"Prompt:\n{r.get('prompt','')}\nGold: {gold}\nFull: {gold_full}\nPred: {pred}\nExtra predictions but all in full_state: {extra_slots}\nRaw: {r.get('raw_output','')}\n{'-'*50}\n")
+        # Missing recall
         elif missing_slots:
             missing += 1
-            logs["missing"].append(f"Prompt:\n{r.get('prompt','')}\nGold: {gold}\nFull: {gold_full}\nPred: {pred}\n漏召回: {missing_slots}\nRaw: {r.get('raw_output','')}\n{'-'*50}\n")
+            logs["missing"].append(f"Prompt:\n{r.get('prompt','')}\nGold: {gold}\nFull: {gold_full}\nPred: {pred}\nMissing recall: {missing_slots}\nRaw: {r.get('raw_output','')}\n{'-'*50}\n")
         else:
-            logs["missing"].append(f"Prompt:\n{r.get('prompt','')}\nGold: {gold}\nFull: {gold_full}\nPred: {pred}\n未知情况\nRaw: {r.get('raw_output','')}\n{'-'*50}\n")
+            logs["missing"].append(f"Prompt:\n{r.get('prompt','')}\nGold: {gold}\nFull: {gold_full}\nPred: {pred}\nUnknown case\nRaw: {r.get('raw_output','')}\n{'-'*50}\n")
 
-    # 输出统计
-    print(f"\nState评估完成！（忽略domain，仅按slot+value）")
-    print(f"完全正确: {perfect}/{total}")
-    print(f"漏召回: {missing}/{total}")
-    print(f"badcase(多预测且不在full_state): {badcase}/{total}")
-    print(f"可接受的多预测: {acceptable_extra}/{total}")
+    # Output statistics
+    print(f"\nState evaluation finished! (Ignore domain, only compare slot+value)")
+    print(f"JGA (Joint Goal Accuracy): {JGA}/{total}")
+    print(f"Missing: {missing}/{total}")
+    print(f"Badcase (extra slots not in full_state): {badcase}/{total}")
+    print(f"Acceptable extra: {acceptable_extra}/{total}")
 
-    # 写日志
+    # New: Slot-value level F1 output
+    precision = all_tp / (all_tp + all_fp) if (all_tp + all_fp) > 0 else 0
+    recall = all_tp / (all_tp + all_fn) if (all_tp + all_fn) > 0 else 0
+    f1 = 2 * precision * recall / (precision + recall) if (precision + recall) > 0 else 0
+    print(f"Slot-value level Micro Precision: {precision:.4f}")
+    print(f"Slot-value level Micro Recall: {recall:.4f}")
+    print(f"Slot-value level Micro F1: {f1:.4f}")
+
+    # Write logs
     for k, v in logs.items():
         if v:
             with open(f"{k}_log.txt", "w", encoding="utf-8") as f:
                 f.writelines(v)
-    print("日志已分别写入 perfect_log.txt, missing_log.txt, badcase_log.txt, acceptable_extra_log.txt")
+    print("Logs have been written to JGA_log.txt, missing_log.txt, badcase_log.txt, acceptable_extra_log.txt")
 
-# 新增：加载response生成prompts和gold_response
+# New: Load response generation prompts and gold_response
 def load_response_prompts(filename):
-    """加载response生成prompts和gold_response"""
+    """Load response generation prompts and gold_response"""
     with open(filename, 'r', encoding='utf-8') as f:
         data = json.load(f)
     prompts = [item["prompt"] for item in data if "prompt" in item]
     gold_responses = [item["gold_result"].get("response", "") for item in data if "gold_result" in item]
     return prompts, gold_responses
 
-# 新增：response批量推理
+# New: Response batch inference
 def infer_responses(tokenizer, model, prompts, max_new_tokens=128, num_samples=None):
-    """批量推理，返回response生成结果。"""
+    """Batch inference, return response generation results."""
     results = []
     if num_samples is not None and num_samples < len(prompts):
         sampled_indices = random.sample(range(len(prompts)), num_samples)
@@ -266,7 +285,7 @@ def infer_responses(tokenizer, model, prompts, max_new_tokens=128, num_samples=N
         sampled_indices = list(range(len(prompts)))
         sampled_prompts = prompts
 
-    for idx, prompt in tqdm(list(enumerate(sampled_prompts)), desc="Response推理中"):
+    for idx, prompt in tqdm(list(enumerate(sampled_prompts)), desc="Response Inferencing"):
         messages = [
             {"role": "user", "content": prompt}
         ]
@@ -288,9 +307,9 @@ def infer_responses(tokenizer, model, prompts, max_new_tokens=128, num_samples=N
         })
     return results
 
-# 新增：response评估
+# New: Response evaluation
 def evaluate_responses(results, gold_responses, error_log_file="error_log.txt"):
-    """使用BLEU分数评估response生成，并记录所有gold和pred对比日志。"""
+    """Use BLEU score to evaluate response generation, and record all gold and pred comparison logs."""
     predictions = []
     references = []
     log_lines = []
@@ -306,47 +325,47 @@ def evaluate_responses(results, gold_responses, error_log_file="error_log.txt"):
             "Raw Output:\n" + r.get("raw_output", "") + "\n"
             + "-" * 50 + "\n"
         )
-    # 计算BLEU分数
+    # Calculate BLEU score
     sacrebleu = evaluate.load('sacrebleu')
     bleu_result = sacrebleu.compute(predictions=predictions, references=references)
     bleu_score = bleu_result["score"]
-    print(f"\nResponse推理完成！BLEU分数: {bleu_score:.2f}")
+    print(f"\nResponse inference finished! BLEU score: {bleu_score:.2f}")
     with open(error_log_file, "w", encoding="utf-8") as f:
         f.writelines(log_lines)
-    print(f"所有gold和pred对比日志已写入 {error_log_file}")
+    print(f"All gold and pred comparison logs have been written to {error_log_file}")
 
 def main():
     parser = argparse.ArgumentParser(description="Domain Inference and Evaluation")
-    parser.add_argument("--base_model", type=str, default="Qwen/Qwen3-4B", help="基础模型路径")
-    parser.add_argument("--lora_model", type=str, default="./qwen3_lora_output", help="LoRA权重路径")
-    parser.add_argument("--prompt_file", type=str, default="domain_recognition_prompts.json", help="Prompt数据文件")
-    parser.add_argument("--max_samples", type=int, default=100, help="推理样本数")
-    parser.add_argument("--max_new_tokens", type=int, default=128, help="生成最大token数")
-    parser.add_argument("--error_log", type=str, default="error_log.txt", help="错误日志文件名")
-    parser.add_argument("--use_lora", action="store_true", help="是否加载LoRA权重")
-    parser.add_argument("--load_in_8bit", action="store_true", help="是否以8bit量化加载模型")
-    parser.add_argument("--load_in_4bit", action="store_true", help="是否以4bit量化加载模型")
-    parser.add_argument("--state_prompt_file", type=str, default="state_extraction_prompts.json", help="State抽取Prompt数据文件")
-    parser.add_argument("--response_prompt_file", type=str, default="response_generation_prompts.json", help="Response生成Prompt数据文件")
-    parser.add_argument("--infer_mode", type=str, choices=["domain", "state", "response"], default="domain", help="推理模式：domain、state或response")
+    parser.add_argument("--base_model", type=str, default="Qwen/Qwen3-4B", help="Base model path")
+    parser.add_argument("--lora_model", type=str, default="./qwen3_lora_output", help="LoRA weights path")
+    parser.add_argument("--prompt_file", type=str, default="domain_recognition_prompts.json", help="Prompt data file")
+    parser.add_argument("--max_samples", type=int, default=100, help="Number of inference samples")
+    parser.add_argument("--max_new_tokens", type=int, default=128, help="Maximum tokens to generate")
+    parser.add_argument("--error_log", type=str, default="error_log.txt", help="Error log filename")
+    parser.add_argument("--use_lora", action="store_true", help="Whether to load LoRA weights")
+    parser.add_argument("--load_in_8bit", action="store_true", help="Whether to load model in 8bit quantization")
+    parser.add_argument("--load_in_4bit", action="store_true", help="Whether to load model in 4bit quantization")
+    parser.add_argument("--state_prompt_file", type=str, default="state_extraction_prompts.json", help="State extraction prompt data file")
+    parser.add_argument("--response_prompt_file", type=str, default="response_generation_prompts.json", help="Response generation prompt data file")
+    parser.add_argument("--infer_mode", type=str, choices=["domain", "state", "response"], default="domain", help="Inference mode: domain, state, or response")
     args = parser.parse_args()
 
-    print("加载模型中...")
+    print("Loading model...")
     tokenizer, model = load_model(
         args.base_model, args.lora_model, args.use_lora, args.load_in_8bit, args.load_in_4bit
     )
 
     if args.infer_mode == "domain":
-        print("加载Prompt数据中...")
+        print("Loading prompt data...")
         prompts, gold_domains = load_prompts(args.prompt_file)
         if not prompts:
-            raise RuntimeError("未加载到域识别prompts，无法继续。")
-        print(f"共加载 {len(prompts)} 条Prompt，准备推理前 {args.max_samples} 条。")
-        print("Prompt示例：", prompts[0])
-        print("Gold Domain示例：", gold_domains[0])
+            raise RuntimeError("Failed to load domain recognition prompts, cannot continue.")
+        print(f"Loaded {len(prompts)} prompts, preparing to infer first {args.max_samples}.")
+        print("Prompt example:", prompts[0])
+        print("Gold Domain example:", gold_domains[0])
 
         results = infer_domains(tokenizer, model, prompts, args.max_new_tokens, args.max_samples)
-        # 由于采样，需对gold_domains重新对齐
+        # Due to sampling, need to realign gold_domains
         if args.max_samples is not None and args.max_samples < len(prompts):
             gold_domains_sampled = [gold_domains[r["original_index"]] for r in results]
         else:
@@ -354,16 +373,16 @@ def main():
         evaluate_domains(results, gold_domains_sampled, args.error_log)
 
     elif args.infer_mode == "state":
-        print("加载State抽取Prompt数据中...")
+        print("Loading state extraction prompt data...")
         state_prompts, gold_states, gold_full_states = load_state_prompts(args.state_prompt_file)
         if not state_prompts:
-            raise RuntimeError("未加载到state抽取prompts，无法继续。")
-        print(f"共加载 {len(state_prompts)} 条State Prompt，准备推理前 {args.max_samples} 条。")
-        print("Prompt示例：", state_prompts[0])
-        print("Gold State示例：", gold_states[0])
-        print("Gold Full State示例：", gold_full_states[0])
+            raise RuntimeError("Failed to load state extraction prompts, cannot continue.")
+        print(f"Loaded {len(state_prompts)} state prompts, preparing to infer first {args.max_samples}.")
+        print("Prompt example:", state_prompts[0])
+        print("Gold State example:", gold_states[0])
+        print("Gold Full State example:", gold_full_states[0])
         state_results = infer_states(tokenizer, model, state_prompts, args.max_new_tokens, args.max_samples)
-        # 由于采样，需对gold_states和gold_full_states重新对齐
+        # Due to sampling, need to realign gold_states and gold_full_states
         if args.max_samples is not None and args.max_samples < len(state_prompts):
             gold_states_sampled = [gold_states[r["original_index"]] for r in state_results]
             gold_full_states_sampled = [gold_full_states[r["original_index"]] for r in state_results]
@@ -374,13 +393,13 @@ def main():
         evaluate_states_v2(state_results, gold_states_sampled, gold_full_states_sampled)
 
     elif args.infer_mode == "response":
-        print("加载Response生成Prompt数据中...")
+        print("Loading response generation prompt data...")
         response_prompts, gold_responses = load_response_prompts(args.response_prompt_file)
         if not response_prompts:
-            raise RuntimeError("未加载到response生成prompts，无法继续。")
-        print(f"共加载 {len(response_prompts)} 条Response Prompt，准备推理前 {args.max_samples} 条。")
-        print("Prompt示例：", response_prompts[0])
-        print("Gold Response示例：", gold_responses[0])
+            raise RuntimeError("Failed to load response generation prompts, cannot continue.")
+        print(f"Loaded {len(response_prompts)} response prompts, preparing to infer first {args.max_samples}.")
+        print("Prompt example:", response_prompts[0])
+        print("Gold Response example:", gold_responses[0])
         response_results = infer_responses(tokenizer, model, response_prompts, args.max_new_tokens, args.max_samples)
         if args.max_samples is not None and args.max_samples < len(response_prompts):
             gold_responses_sampled = [gold_responses[r["original_index"]] for r in response_results]

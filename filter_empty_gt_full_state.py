@@ -18,6 +18,6 @@ kept = len(filtered)
 with open(output_file, 'w', encoding='utf-8') as fout:
     json.dump(filtered, fout, ensure_ascii=False, indent=2)
 
-print(f'原始条数: {total}')
-print(f'剔除后条数: {kept}')
-print(f'剔除条数: {total - kept}') 
+print(f'Original count: {total}')
+print(f'Kept count: {kept}')
+print(f'Filtered count: {total - kept}') 

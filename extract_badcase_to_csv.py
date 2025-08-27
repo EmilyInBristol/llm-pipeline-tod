@@ -7,7 +7,7 @@ output_file = "badcase_extract.csv"
 with open(input_file, "r", encoding="utf-8") as f:
     content = f.read()
 
-# 正则提取所有case
+# Extract all cases using regex
 pattern = re.compile(
     r"Now complete the following example:(.*?)Gold Domain: (.*?)\nPredicted Domain: (.*?)\n", re.DOTALL
 )
@@ -17,10 +17,10 @@ with open(output_file, "w", encoding="utf-8", newline='') as csvfile:
     writer = csv.writer(csvfile)
     writer.writerow(["context", "gold_domain", "predicted_domain"])
     for dialog, gold_domain, pred_domain in matches:
-        # 去除多余空白
+        # Remove extra whitespace
         dialog = dialog.strip().replace('\n', ' ')
         gold_domain = gold_domain.strip()
         pred_domain = pred_domain.strip()
         writer.writerow([dialog, gold_domain, pred_domain])
 
-print(f"共提取 {len(matches)} 个case，已保存到 {output_file}") 
+print(f"Extracted {len(matches)} cases, saved to {output_file}") 

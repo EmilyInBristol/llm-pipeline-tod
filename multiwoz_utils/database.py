@@ -22,7 +22,7 @@ class MultiWOZDatabase:
         self._load_data()
 
     def _load_data(self):
-        """加载数据库，并将字段名转为小写，提取所有字段 key。"""
+        """Load database and convert field names to lowercase, extract all field keys."""
         for domain in self.DOMAINS:
             file_path = os.path.join(self.database_path, f"{domain}_db.json")
             with open(file_path, "r", encoding="utf-8") as f:
@@ -31,14 +31,14 @@ class MultiWOZDatabase:
             self.database_keys[domain] = set()
 
             if domain == 'taxi':
-                # taxi 是 dict
+                # taxi is a dict
                 self.database_data[domain] = {
                     k.lower(): v for k, v in self.database_data[domain].items()
                 }
                 self.database_keys[domain].update(self.database_data[domain].keys())
             else:
                 for i, item in enumerate(self.database_data[domain]):
-                    # 所有字段转为小写
+                    # Convert all fields to lowercase
                     self.database_data[domain][i] = {
                         k.lower(): v for k, v in item.items()
                     }
@@ -46,14 +46,14 @@ class MultiWOZDatabase:
 
     def query(self, domain: Text, constraints: Dict[Text, Text]) -> List[Dict]:
         """
-        返回指定 domain 中满足所有 constraints 的实体列表。
+        Return a list of entities in the specified domain that satisfy all constraints.
 
-        参数：
-            domain:      查询的领域名，如 'hotel'、'restaurant'。
-            constraints: 键值对形式的硬约束，如 {'area': 'north', 'parking': 'yes'}
+        Args:
+            domain:      Domain name to query, such as 'hotel', 'restaurant'.
+            constraints: Hard constraints in key-value pairs, such as {'area': 'north', 'parking': 'yes'}
 
-        返回：
-            满足条件的实体（字典）组成的列表
+        Returns:
+            List of entities (dictionaries) that satisfy the conditions
         """
         results = []
 
@@ -64,7 +64,7 @@ class MultiWOZDatabase:
         entities = self.database_data[domain]
 
         if domain == "taxi":
-            results = [entities]  # 直接返回所有
+            results = [entities]  # Return all directly
         else:
             for entity in entities:
                 match = True
@@ -85,7 +85,7 @@ class MultiWOZDatabase:
         return results
 
 
-# ✅ 默认数据库路径（可以改为你的真实路径）
+# ✅ Default database path (can be changed to your real path)
 DEFAULT_DATABASE_PATH = "./multiwoz_database"
-# ✅ 自动初始化全局数据库实例（推荐做法）
+# ✅ Automatically initialize global database instance (recommended approach)
 default_database = MultiWOZDatabase(DEFAULT_DATABASE_PATH)
