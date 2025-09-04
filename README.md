@@ -101,6 +101,53 @@ llm-pipeline-tod/
 └── case_analysis/                   # Case analysis results
 ```
 
+## 📊 Data Files
+
+### domain_fields.json
+
+`domain_fields.json` is the core configuration file of the project, defining the field structure and description information for various dialogue domains. This file provides support for the following functionalities:
+
+- **Domain Field Definitions**: Defines standardized field names and descriptions for each domain (restaurant, hotel, attraction, taxi, train, hospital, police)
+- **Prompt Generation**: Called by the `get_fields_desc()` function in `prompts.py` and `prompts-v1.py` to generate prompts for state extraction
+- **Structured Output**: Ensures that the system's output state information conforms to predefined field specifications
+
+File structure example:
+```json
+{
+  "restaurant": {
+    "fields": [
+      {"name": "food", "desc": "Type of cuisine or food preference"},
+      {"name": "pricerange", "desc": "Price range preference"},
+      {"name": "area", "desc": "Geographic area preference"}
+    ]
+  }
+}
+```
+
+### multiwoz_database/
+
+The `multiwoz_database/` directory contains the complete database files of the MultiWOZ dataset, providing real-time information query capabilities for the dialogue system:
+
+- **Multi-domain Databases**: Contains database files for 7 domains (attraction, hospital, hotel, police, restaurant, taxi, train)
+- **Structured Data**: Each domain database is stored in JSON format, containing detailed information about entities in that domain
+- **Query Interface**: Provides a unified database query interface through `multiwoz_utils/database.py`
+- **Context Enhancement**: Provides real entity information for the response generation module, supporting the generation of accurate and useful system responses
+
+Database file example:
+```json
+{
+  "restaurant": [
+    {
+      "name": "Restaurant Name",
+      "food": "Italian",
+      "pricerange": "moderate",
+      "area": "centre",
+      "phone": "01223 123456"
+    }
+  ]
+}
+```
+
 ## 🔧 Core Modules
 
 ### Domain Recognition
